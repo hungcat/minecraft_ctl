@@ -124,7 +124,7 @@ def create_server(world_name='', version='LATEST'):
     client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
     ip_address = _get_ip_address_of_droplet(droplet)
     _ssh_connect(client, hostname=ip_address, username='root', pkey=private_key)
-    status = _exec_commands(client, , ignore_error=True)
+    status = _exec_commands(client, commands, ignore_error=True)
 
     if status == 0:
         print('Minecraft has waked up!')
