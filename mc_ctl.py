@@ -107,16 +107,6 @@ def list_server():
 
 def create_server(world_name='', version='LATEST'):
     backup_url = _construct_github_url(world_name)
-
-    private_key, public_key = _get_ssh_keys()
-    droplet = _create_droplet(public_key, world_name)
-    print('Droplet has created. Run minecraft...')
-
-    client = paramiko.SSHClient()
-    client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-    ip_address = _get_ip_address_of_droplet(droplet)
-    _ssh_connect(client, hostname=ip_address, username='root', pkey=private_key)
-
     commands = [
         'apt install -y git',
         'mkdir -p /root/backup',
@@ -126,7 +116,16 @@ def create_server(world_name='', version='LATEST'):
     if _test_github_url(backup_url) == False:
         commands.pop(2)
 
+    private_key, public_key = _get_ssh_keys()
+    droplet = _create_droplet(public_key, world_name)
+    print('Droplet has created. Run minecraft...')
+
+    client = paramiko.SSHClient()
+    client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+    ip_address = _get_ip_address_of_droplet(droplet)
+    _ssh_connect(client, hostname=ip_address, username='root', pkey=private_key)
     status = _exec_commands(client, , ignore_error=True)
+
     if status == 0:
         print('Minecraft has waked up!')
         message = emoji.emojize(':hammer_and_pick: Created instance: `{}`'.format(ip_address), use_aliases=True)
@@ -142,13 +141,20 @@ def create_server(world_name='', version='LATEST'):
 
     return message
 
-def backup_world(world_name='default'):
+def backup_world(world_name=''):
+    backup_url = _construct_github_url(world_name)
+    if _test_github_url(backup_url) == False:
+        return emoji.emojize(':thinking_face: Unavailable repository: {}/{}'.format(GITHUB_URL, world_name), use_aliases=True)
+
     manager = digitalocean.Manager(token=DIGITALOCEAN_API_TOKEN)
     all_droplets = manager.get_all_droplets()
     target = filter(lambda droplet: droplet.name == 'minecraft_{}'.format(world_name), all_droplets)
     if len(target) == 0:
-        message = emoji.emojize(':thinking_face: That world is not running', use_aliases=True)
-        return message
+        target = filter(lambda droplet: droplet.name == 'minecraft_', all_droplets)
+        if len(target) == 0:
+            return emoji.emojize(':thinking_face: That world is not running', use_aliases=True)
+        elif _yes_no_input('Overwrite {}/{} with running minecraft world?'.format(GITHUB_URL, world_name)) == False:
+            return emoji.emojize(':raised_hand: cannceled overwriting {}/{} with running minecraft world'.format(GITHUB_URL, world_name), use_aliases=True)
     droplet = target[0]
 
     private_key = _get_ssh_keys()
@@ -160,7 +166,7 @@ def backup_world(world_name='default'):
 
     _exec_commands(client, [
         'cd /root/backup/world',
-        '[ -d .git ] || git init && git remote add origin {} && git config branch.master.remote origin && git config branch.master.merge refs/heads/master'.format(_construct_github_url(world_name)),
+        '[ -d .git ] || git init && git remote add origin {} && git config branch.master.remote origin && git config branch.master.merge refs/heads/master'.format(backup_url),
         'git add --all',
         'git commit -m "world update"',
         'git push'
@@ -169,7 +175,7 @@ def backup_world(world_name='default'):
     message = emoji.emojize(':rocket: Backuped world: {}/{}'.format(GITHUB_URL, world_name), use_aliases=True)
     return message
 
-def destroy_server(world_name='default'):
+def destroy_server(world_name=''):
     manager = digitalocean.Manager(token=DIGITALOCEAN_API_TOKEN)
     all_droplets = manager.get_all_droplets()
     target = filter(lambda droplet: droplet.name == 'minecraft_{}'.format(world_name), all_droplets)
@@ -205,7 +211,7 @@ def _exec_commands(client, commands, ignore_error=False):
     return 0
 
 
-def _create_droplet(public_key, world_name='default'):
+def _create_droplet(public_key, world_name=''):
     key_name = 'hungcat-mc-ctl-' + public_key[-7:]
     droplet_name = 'minecraft_{}'.format(world_name)
     manager = digitalocean.Manager(token=DIGITALOCEAN_API_TOKEN)
@@ -297,6 +303,14 @@ def _test_github_url(github_url):
     except git.GitCommandError as e:
         return False
     return True
+
+def _yes_no_input(message):
+    while True:
+        choice = input("{} [y[es]/n[o]]: ".format(message)).lower()
+        if choice in ['y', 'ye', 'yes']:
+            return True
+        elif choice in ['n', 'no']:
+            return False
 
 if __name__ == '__main__':
     command_handler(sys.argv)
