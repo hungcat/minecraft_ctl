@@ -167,6 +167,8 @@ def _construct_droplet_docker_commands(world_name, version):
 
     commands.append('docker run -d -v /root/data:/data -e EULA=TRUE -e VERSION={} -e WORLD=/data/world --name minecraft -p 25565:25565 itzg/minecraft-server'.format(version))
 
+    return commands
+
 
 def backup_world(world_name=''):
     backup_url = _construct_github_url(world_name)
