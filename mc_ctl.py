@@ -1,5 +1,6 @@
 import os
 import sys
+import urllib.request
 
 # furl
 from furl import furl
@@ -22,6 +23,7 @@ GITHUB_USER = os.getenv('GITHUB_USER')
 GITHUB_TOKEN = os.getenv('GITHUB_TOKEN')
 
 GITHUB_URL = 'https://github.com'
+GITHUB_RAW_URL = 'https://raw.githubusercontent.com'
 SCRIPT_DIR = os.path.dirname(__file__)
 USAGE = '''
 Usage: {0} [create|backup|destroy|destroy_without_backup|help] [target]
@@ -64,7 +66,7 @@ def command_handler(args):
         return
     else:
         world_name = ''
-        version = 'LATEST'
+        version = ''
         if argc > 1:
             action = args[1]
         if argc > 2:
@@ -105,16 +107,11 @@ def list_server():
     manager = digitalocean.Manager(token=DIGITALOCEAN_API_TOKEN)
     return manager.get_all_droplets()
 
-def create_server(world_name='', version='LATEST'):
-    backup_url = _construct_github_url(world_name)
-    commands = [
-        'apt install -y git',
-        'mkdir -p /root/backup',
-        'git clone {} /root/backup/world'.format(backup_url),
-        'docker run -d -v /root/backup:/data -e EULA=TRUE -e VERSION={} -e WORLD=/data/world --name minecraft -p 25565:25565 itzg/minecraft-server'.format(version)
-    ]
-    if _test_github_url(backup_url) == False:
-        commands.pop(2)
+def create_server(world_name='', version=''):
+    try:
+        commands = _construct_droplet_docker_commands(world_name, version)
+    except Exception as e:
+        return emoji.emojize(':no_good: Exit: {}'.format(e), use_aliases=True)
 
     private_key, public_key = _get_ssh_keys()
     droplet = _create_droplet(public_key, world_name)
@@ -141,6 +138,36 @@ def create_server(world_name='', version='LATEST'):
 
     return message
 
+def _construct_droplet_docker_commands(world_name, version):
+    backup_url = _construct_github_url(world_name)
+    version_url = _construct_github_url(world_name, path='master/VERSION.txt', is_raw=True)
+    commands = [
+        'apt install -y git',
+        'mkdir -p /root/data',
+    ]
+
+    if _test_github_url(backup_url) == True:
+        commands.append('git clone {} /root/data/world'.format(backup_url))
+
+        v = ''
+        try:
+            with urllib.request.urlopen(urllib.request.Request(version_url)) as res:
+                v = res.read().decode('utf-8')
+        except urllib.request.URLError as e:
+            print('Failed to get VERSION.txt: {}'.format(e))
+        if v != '':
+            if version == '':
+                version = v
+            else:
+                if _yes_no_input('Last run version is {}. Run version {} now?'.format(v, version)) == False:
+                    raise Exception('Disagreed with version setting')
+
+    if version == '':
+        version = 'LATEST'
+
+    commands.append('docker run -d -v /root/data:/data -e EULA=TRUE -e VERSION={} -e WORLD=/data/world --name minecraft -p 25565:25565 itzg/minecraft-server'.format(version))
+
+
 def backup_world(world_name=''):
     backup_url = _construct_github_url(world_name)
     if _test_github_url(backup_url) == False:
@@ -165,7 +192,8 @@ def backup_world(world_name=''):
     _ssh_connect(client, hostname=ip_address, username='root', pkey=private_key)
 
     _exec_commands(client, [
-        'cd /root/backup/world',
+        'cd /root/data/world',
+        'find /root/data -name *.jar | sed -e "s/^.\\+r\\.\\([0-9\\.]\\+\\)\\.jar$/\\1/" > VERSION.txt'
         '[ -d .git ] || git init && git remote add origin {} && git config branch.master.remote origin && git config branch.master.merge refs/heads/master'.format(backup_url),
         'git add --all',
         'git commit -m "world update"',
@@ -289,10 +317,15 @@ def _generate_ssh_key(key_file_name):
 
     return private_key, public_key
 
-def _construct_github_url(world_name):
-    url = furl(GITHUB_URL)
+def _construct_github_url(world_name, path='', is_raw=False):
+    if is_raw:
+        url = furl(GITHUB_RAW_URL)
+    else:
+        url = furl(GITHUB_URL)
     #parsed.scheme = 'https'
     url.path = '{}/{}'.format(url.path, world_name)
+    if path != '':
+        url.path = '{}/{}'.format(url.path, path)
     url.username = GITHUB_USER
     url.password = GITHUB_TOKEN
     return url.tostr()
@@ -314,3 +347,4 @@ def _yes_no_input(message):
 
 if __name__ == '__main__':
     command_handler(sys.argv)
+
