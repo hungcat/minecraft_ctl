@@ -127,7 +127,7 @@ def create_server(world_name='', version=''):
         print('Minecraft has waked up!')
         message = emoji.emojize(':hammer_and_pick: Created instance: `{}`'.format(ip_address), use_aliases=True)
     else:
-        print('Minecraft couldn\' wake up!')
+        print('Minecraft couldn\'t wake up!')
         print(emoji.emojize(':muscle: Destroying server...', use_aliases=True))
         message = emoji.emojize(':cry: Failed to create server...', use_aliases=True)
         try:
@@ -299,8 +299,8 @@ def _get_ssh_keys():
 
 def _generate_ssh_key(key_file_name):
     key = RSA.generate(4096)
-    skey = key.exportKey()
-    pkey = key.publickey().exportKey()
+    private_key = key.exportKey()
+    public_key = key.publickey().exportKey()
 
     key_file_dir = '{}/keys'.format(SCRIPT_DIR)
     private_key_file_path = '{}/{}'.format(key_file_dir, key_file_name)
