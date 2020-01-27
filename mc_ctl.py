@@ -1,6 +1,7 @@
 import os
 import sys
 import urllib.request
+import pathlib
 
 # furl
 from furl import furl
@@ -24,7 +25,7 @@ GITHUB_TOKEN = os.getenv('GITHUB_TOKEN')
 
 GITHUB_URL = 'https://github.com'
 GITHUB_RAW_URL = 'https://raw.githubusercontent.com'
-SCRIPT_DIR = os.path.dirname(__file__)
+SCRIPT_DIR = pathlib.Path(__file__).parent
 USAGE = '''
 Usage: {0} [create|backup|destroy|destroy_without_backup|help] [target]
     create: Create and serve minecraft server
@@ -283,14 +284,14 @@ def _get_ip_address_of_droplet(droplet):
 def _get_ssh_keys():
     key_file_name = 'id_rsa'
 
-    key_file_dir = '{}/keys'.format(SCRIPT_DIR)
-    private_key_file_path = '{}/{}'.format(key_file_dir, key_file_name)
-    public_key_file_path = '{}/{}.pub'.format(key_file_dir, key_file_name)
+    key_file_dir = SCRIPT_DIR / 'keys'
+    private_key_file_path = key_file_dir / key_file_name
+    public_key_file_path = key_file_dir / '{}.pub'.format(key_file_name)
 
     try:
-        with open('{}/{}'.format(private_key_file_path, key_file_name), 'rb') as content_file:
+        with open(private_key_file_path, 'rb') as content_file:
             private_key = RSA.import_key(content_file.read()).export_key()
-        with open('{}/{}'.format(public_key_file_path, key_file_name), 'rb') as content_file:
+        with open(public_key_file_path, 'rb') as content_file:
             public_key = RSA.import_key(content_file.read()).publickey().export_key()
     except:
         private_key, public_key = _generate_ssh_key(key_file_name)
@@ -302,14 +303,12 @@ def _generate_ssh_key(key_file_name):
     private_key = key.exportKey()
     public_key = key.publickey().exportKey()
 
-    key_file_dir = '{}/keys'.format(SCRIPT_DIR)
-    private_key_file_path = '{}/{}'.format(key_file_dir, key_file_name)
-    public_key_file_path = '{}/{}.pub'.format(key_file_dir, key_file_name)
+    key_file_dir = SCRIPT_DIR / 'keys'
+    private_key_file_path = key_file_dir / key_file_name
+    public_key_file_path = key_file_dir / '{}.pub'.format(key_file_name)
 
+    os.makedirs(key_file_dir, mode=0o700, exist_ok=True)
 
-    if not os.path.isdir(key_file_dir):
-        os.makedirs(key_file_dir)
-        os.chmod(key_file_dir, 0o700)
     with open(private_key_file_path, 'wb') as content_file:
         os.chmod(private_key_file_path, 0o600)
         content_file.write(private_key)
