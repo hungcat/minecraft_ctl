@@ -289,10 +289,8 @@ def _get_ssh_keys():
     public_key_file_path = key_file_dir / '{}.pub'.format(key_file_name)
 
     try:
-        with open(private_key_file_path, 'rb') as content_file:
-            private_key = RSA.import_key(content_file.read()).export_key()
-        with open(public_key_file_path, 'rb') as content_file:
-            public_key = RSA.import_key(content_file.read()).publickey().export_key()
+        private_key = RSA.import_key(private_key_file_path.read_bytes()).export_key()
+        public_key = RSA.import_key(public_key_file_path.read_bytes()).publickey().export_key()
     except:
         private_key, public_key = _generate_ssh_key(key_file_name)
 
@@ -307,14 +305,11 @@ def _generate_ssh_key(key_file_name):
     private_key_file_path = key_file_dir / key_file_name
     public_key_file_path = key_file_dir / '{}.pub'.format(key_file_name)
 
-    os.makedirs(key_file_dir, mode=0o700, exist_ok=True)
-
-    with open(private_key_file_path, 'wb') as content_file:
-        os.chmod(private_key_file_path, 0o600)
-        content_file.write(private_key)
-    with open(public_key_file_path, 'wb') as content_file:
-        os.chmod(public_key_file_path, 0o600)
-        content_file.write(public_key)
+    key_file_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
+    private_key_file_path.write_bytes(private_key)
+    private_key_file_path.chmod(0o600)
+    public_key_file_path.write_bytes(public_key)
+    public_key_file_path.chmod(0o600)
 
     return private_key, public_key
 
