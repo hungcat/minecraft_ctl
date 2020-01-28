@@ -127,8 +127,7 @@ def create_server(world_name='', version=''):
 
     if status == 0:
         print('Minecraft has waked up!')
-        message = _emoji(':hammer_and_pick: Created instance: `{}`'.format(ip_address))
-        message = _emoji(':hammer_and_pick: Created minecraft_{} instance: `{}`'.format(version, ip_address))
+        message = _emoji(':hammer_and_pick: Created minecraft {} instance: `{}`'.format(version, ip_address))
     else:
         print('Minecraft couldn\'t wake up!')
         print(_emoji(':muscle: Destroying server...'))
@@ -196,16 +195,20 @@ def backup_world(world_name=''):
     ip_address = _get_ip_address_of_droplet(droplet)
     _ssh_connect(client, hostname=ip_address, username='root', pkey=private_key)
 
-    _exec_commands(client, [
+    status = _exec_commands(client, [
         'cd /root/data/world',
-        'find /root/data -name *.jar | xargs basename | sed -e "s/^[^.]\\+r\\.\\(.\\+\\)\\.jar$/\\1/" > MCCTL_VERSION.txt'
         '[ -d .git ] || git init && git remote add origin {} && git config branch.master.remote origin && git config branch.master.merge refs/heads/master'.format(backup_url),
+        r'find /root/data -maxdepth 1 -name *.jar -print0 -quit | sed -e "s,^.*/[^.]*\.\([0-9.]*\)\.jar\x0$,\1," > MCCTL_VERSION.txt'
         'git add --all',
-        'git commit -m "world update [{}]"'.format(datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9))).strftime('%Y/%m/%d %H:%M:%S%z')),
+        'git commit -m "world `cat MCCTL_VERSION.txt` update [{}]"'.format(version, datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9))).strftime('%Y/%m/%d %H:%M:%S%z')),
         'git push'
     ])
 
-    message = _emoji(':rocket: Backuped world: {}/{}'.format(GITHUB_URL, world_name))
+    if status == 0:
+        message = _emoji(':rocket: Backuped world: {}/{}'.format(GITHUB_URL, world_name))
+    else:
+        message = _emoji(':cry: Failed to backup')
+
     return message
 
 def destroy_server(world_name=''):
