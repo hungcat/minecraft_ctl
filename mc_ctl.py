@@ -141,7 +141,7 @@ def create_server(world_name='', version=''):
 
 def _construct_droplet_docker_commands(world_name, version):
     backup_url = _construct_github_url(world_name)
-    version_url = _construct_github_url(world_name, path='master/VERSION.txt', is_raw=True)
+    version_url = _construct_github_url(world_name, path='master/MCCTL_VERSION.txt', is_raw=True)
     commands = [
         'apt install -y git',
         'mkdir -p /root/data',
@@ -155,7 +155,7 @@ def _construct_droplet_docker_commands(world_name, version):
             with urllib.request.urlopen(urllib.request.Request(version_url)) as res:
                 v = res.read().decode('utf-8')
         except urllib.request.URLError as e:
-            print('Failed to get VERSION.txt: {}'.format(e))
+            print('Failed to get MCCTL_VERSION.txt: {}'.format(e))
         if v != '':
             if version == '':
                 version = v
@@ -196,7 +196,7 @@ def backup_world(world_name=''):
 
     _exec_commands(client, [
         'cd /root/data/world',
-        'find /root/data -name *.jar | sed -e "s/^.\\+r\\.\\([0-9\\.]\\+\\)\\.jar$/\\1/" > VERSION.txt'
+        'find /root/data -name *.jar | xargs basename | sed -e "s/^[^.]\\+r\\.\\(.\\+\\)\\.jar$/\\1/" > MCCTL_VERSION.txt'
         '[ -d .git ] || git init && git remote add origin {} && git config branch.master.remote origin && git config branch.master.merge refs/heads/master'.format(backup_url),
         'git add --all',
         'git commit -m "world update"',
