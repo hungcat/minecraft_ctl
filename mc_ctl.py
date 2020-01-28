@@ -156,7 +156,7 @@ def _construct_droplet_docker_commands(world_name, version):
             with urllib.request.urlopen(urllib.request.Request(version_url)) as res:
                 v = res.read().decode('utf-8')
         except urllib.request.URLError as e:
-            print(emoji.emojize(':information: MCCTL_VERSION.txt nay not exists: {}'.format(e), use_aliases=True))
+            print(emoji.emojize(':information: MCCTL_VERSION.txt may not exists: {}'.format(e), use_aliases=True))
         if v != '':
             if version == '':
                 version = v
