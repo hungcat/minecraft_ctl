@@ -2,6 +2,7 @@ import os
 import sys
 import urllib.request
 import pathlib
+import datetime
 
 # furl
 from furl import furl
@@ -155,7 +156,7 @@ def _construct_droplet_docker_commands(world_name, version):
             with urllib.request.urlopen(urllib.request.Request(version_url)) as res:
                 v = res.read().decode('utf-8')
         except urllib.request.URLError as e:
-            print('Failed to get MCCTL_VERSION.txt: {}'.format(e))
+            print(emoji.emojize(':information: MCCTL_VERSION.txt nay not exists: {}'.format(e), use_aliases=True))
         if v != '':
             if version == '':
                 version = v
@@ -199,7 +200,7 @@ def backup_world(world_name=''):
         'find /root/data -name *.jar | xargs basename | sed -e "s/^[^.]\\+r\\.\\(.\\+\\)\\.jar$/\\1/" > MCCTL_VERSION.txt'
         '[ -d .git ] || git init && git remote add origin {} && git config branch.master.remote origin && git config branch.master.merge refs/heads/master'.format(backup_url),
         'git add --all',
-        'git commit -m "world update"',
+        'git commit -m "world update [{}]"'.format(datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9))).strftime('%Y/%m/%d %H:%M:%S%z')),
         'git push'
     ])
 
