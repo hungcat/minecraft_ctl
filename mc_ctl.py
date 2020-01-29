@@ -47,6 +47,9 @@ Usage: {0} [create|backup|destroy|destroy_without_backup|help] [target]
     rcon: Run rcon-cli command
         {0} rcon [world_repository] [command]
         ex: {0} rcon hungcat/minecraft-world /help
+    do_commands: Run commands
+        {0} do_commands [world_repository] [commands...]
+        ex: {0} do_commands hungcat/minecraft-world "ls" "cat /data/logs/latest.log | tail -10"
     list: List running worlds
         {0} list
     help: Show this
@@ -108,6 +111,9 @@ def command_handler(args):
         elif action == 'rcon':
             print(_emoji(':muscle: Restarting minecraft server...'))
             print(do_commands(world_name, [ 'docker exec rcon-cli {}'.format(version) ]))
+        elif action == 'do_commands':
+            print(_emoji(':muscle: Restarting minecraft server...'))
+            print(do_commands(world_name, args[3:]))
         else:
             print('Invalid action: {}'.format(action))
             print(USAGE)
@@ -178,7 +184,7 @@ def _construct_droplet_docker_commands(world_name, version):
     if version == '':
         version = 'LATEST'
 
-    commands.append('docker run -d -v /root/data:/data -e EULA=TRUE -e VERSION={} -e WORLD=/data/world --name minecraft -p 25565:25565 --restart always itzg/minecraft-server'.format(version))
+    commands.append('docker run -d -v /root/data:/data -e EULA=TRUE -e VERSION={} -e WORLD=/data/world -e TZ=Asia/Tokyo --name minecraft -p 25565:25565 --restart always itzg/minecraft-server'.format(version))
 
     return commands, version
 
