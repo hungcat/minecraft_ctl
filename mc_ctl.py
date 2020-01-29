@@ -41,6 +41,12 @@ Usage: {0} [create|backup|destroy|destroy_without_backup|help] [target]
     destroy_without_backup: Destroy current world without backup
         {0} destroy_without_backup [world_repository]
         ex: {0} destroy_without_backup hungcat/minecraft-world
+    restart: Restart minecraft server
+        {0} restart [world_repository]
+        ex: {0} restart hungcat/minecraft-world
+    rcon: Run rcon-cli command
+        {0} rcon [world_repository] [command]
+        ex: {0} rcon hungcat/minecraft-world /help
     list: List running worlds
         {0} list
     help: Show this
@@ -96,6 +102,12 @@ def command_handler(args):
             print(destroy_server(world_name))
         elif action == 'help':
             print(USAGE)
+        elif action == 'restart':
+            print(_emoji(':muscle: Restarting minecraft server...'))
+            print(do_commands(world_name, [ 'docker restart minecraft' ]))
+        elif action == 'rcon':
+            print(_emoji(':muscle: Restarting minecraft server...'))
+            print(do_commands(world_name, [ 'docker exec rcon-cli {}'.format(version) ]))
         else:
             print('Invalid action: {}'.format(action))
             print(USAGE)
@@ -173,8 +185,9 @@ def _construct_droplet_docker_commands(world_name, version):
 
 def backup_world(world_name=''):
     backup_url = _construct_github_url(world_name)
+    output_url = '{}/{}'.format(GITHUB_URL, world_name)
     if _test_github_url(backup_url) == False:
-        return _emoji(':thinking_face: Unavailable repository: {}/{}'.format(GITHUB_URL, world_name))
+        return _emoji(':thinking_face: Unavailable repository: {}'.format(output_url))
 
     manager = digitalocean.Manager(token=DIGITALOCEAN_API_TOKEN)
     all_droplets = manager.get_all_droplets()
@@ -183,8 +196,8 @@ def backup_world(world_name=''):
         target = filter(lambda droplet: droplet.name == 'minecraft-', all_droplets)
         if len(target) == 0:
             return _emoji(':thinking_face: That world is not running')
-        elif _yes_no_input('Overwrite {}/{} with running minecraft world?'.format(GITHUB_URL, world_name)) == False:
-            return _emoji(':raised_hand: cannceled overwriting {}/{} with running minecraft world'.format(GITHUB_URL, world_name))
+        elif _yes_no_input('Overwrite {} with running new minecraft world?'.format(output_url)) == False:
+            return _emoji(':raised_hand: Cannceled overwriting {} with running new minecraft world'.format(output_url))
     droplet = target[0]
 
     private_key = _get_ssh_keys()
@@ -205,7 +218,7 @@ def backup_world(world_name=''):
     ])
 
     if status == 0:
-        message = _emoji(':rocket: Backuped world: {}/{}'.format(GITHUB_URL, world_name))
+        message = _emoji(':rocket: Backuped world: {}'.format(output_url))
     else:
         message = _emoji(':cry: Failed to backup')
 
@@ -225,6 +238,33 @@ def destroy_server(world_name=''):
 
     message = _emoji(':boom: Destroyed instance: `{}`'.format(ip_address))
     return message
+
+def do_commands(world_name='', commands=[]):
+    manager = digitalocean.Manager(token=DIGITALOCEAN_API_TOKEN)
+    all_droplets = manager.get_all_droplets()
+    target = filter(lambda droplet: droplet.name == 'minecraft-{}'.format(world_name), all_droplets)
+    if len(target) == 0:
+        return _emoji(':thinking_face: That world is not running')
+    droplet = target[0]
+
+    private_key = _get_ssh_keys()
+    client = paramiko.SSHClient()
+    client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+
+    ip_address = _get_ip_address_of_droplet(droplet)
+    _ssh_connect(client, hostname=ip_address, username='root', pkey=private_key)
+
+    status = _exec_commands(client, commands)
+
+    if status == 0:
+        message = _emoji(':thumbs_up: Commands succeeded!')
+    else:
+        message = _emoji(':cry: Commands failed...')
+
+    return message
+
+
+
 
 @retry(tries=30, delay=5)
 def _ssh_connect(client, hostname, username, pkey):
