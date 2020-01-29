@@ -144,12 +144,11 @@ def _construct_droplet_docker_commands(world_name, version):
     backup_url = _construct_github_url(world_name)
     version_url = _construct_github_url(world_name, path='master/MCCTL_VERSION.txt', is_raw=True)
     commands = [
-        'apt install -y git',
-        'mkdir -p /root/data',
+        'apt install -y git'
     ]
 
     if _test_github_url(backup_url) == True:
-        commands.append('git clone {} /root/data/world'.format(backup_url))
+        commands.append('git clone {} /root/data'.format(backup_url))
 
         v = ''
         try:
@@ -167,7 +166,7 @@ def _construct_droplet_docker_commands(world_name, version):
     if version == '':
         version = 'LATEST'
 
-    commands.append('docker run -d -v /root/data:/data -e EULA=TRUE -e VERSION={} -e WORLD=/data/world --name minecraft -p 25565:25565 itzg/minecraft-server'.format(version))
+    commands.append('docker run -d -v /root/data:/data -e EULA=TRUE -e VERSION={} -e WORLD=/data/world --name minecraft -p 25565:25565 --restart always itzg/minecraft-server'.format(version))
 
     return commands, version
 
@@ -196,9 +195,10 @@ def backup_world(world_name=''):
     _ssh_connect(client, hostname=ip_address, username='root', pkey=private_key)
 
     status = _exec_commands(client, [
-        'cd /root/data/world',
+        'cd /root/data',
         '[ -d .git ] || git init && git remote add origin {} && git config branch.master.remote origin && git config branch.master.merge refs/heads/master'.format(backup_url),
         r'find /root/data -maxdepth 1 -name *.jar -print0 -quit | sed -e "s,^.*/[^.]*\.\([0-9.]*\)\.jar\x0$,\1," > MCCTL_VERSION.txt'
+        '[ -f .gitignore ] || echo "/minecraft_server*.jar" > .gitignore',
         'git add --all',
         'git commit -m "world `cat MCCTL_VERSION.txt` update [{}]"'.format(version, datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9))).strftime('%Y/%m/%d %H:%M:%S%z')),
         'git push'
