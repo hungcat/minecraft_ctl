@@ -25,8 +25,8 @@ import emoji
 
 import docker
 
-os.environ['GITHUB_USER'] = 'hungcat'
-os.environ['GITHUB_TOKEN'] = 'b902e58e88f72f0b64084f3a087ac9a77c19ecc3'
+#os.environ['GITHUB_USER'] = 'hungcat'
+#os.environ['GITHUB_TOKEN'] = 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'
 
 GITHUB_USER = os.getenv('GITHUB_USER')
 GITHUB_TOKEN = os.getenv('GITHUB_TOKEN')
