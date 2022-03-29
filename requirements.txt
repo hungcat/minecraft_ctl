@@ -1,7 +1,7 @@
 emoji==0.5.4
 furl==2.1.0
 GitPython==3.0.5
-paramiko==2.7.1
+paramiko==2.10.1
 pycryptodomex==3.9.4
 python-digitalocean==1.14.0
 retry==0.9.2
