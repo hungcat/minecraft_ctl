@@ -1,6 +1,6 @@
 emoji==0.5.4
 furl==2.1.0
-GitPython==3.0.5
+GitPython==3.1.32
 paramiko==2.7.1
 pycryptodomex==3.9.4
 python-digitalocean==1.14.0
